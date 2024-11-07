@@ -12,14 +12,16 @@ PROJECT_NAME="$(basename "$PROJECT_DIR")"
 # Virtual environment name with hash for uniqueness
 VENV_HASH=$(echo -n "$PROJECT_DIR" | md5sum | cut -c1-10)
 VENV="$PROJECT_DIR/${PROJECT_NAME}-venv-$VENV_HASH"
+PYENV="${PROJECT_NAME}-pyenv-$VENV_HASH"
 
 KERNEL_SPEC="$PROJECT_DIR/.jupyter_kernelspec"
 ACTIVATE_SL="$PROJECT_DIR/venv_activate"
 
 # List of files to ignore in .gitignore - quotated, spaces NO COMMAS
-venvName=$(basename "$VENV")
 
-FILES_TO_IGNORE=("/$venvName" "venv_activate" ".jupyter_kernelspec")
+FILES_TO_IGNORE=("/$(basename "$VENV")" "venv_activate" ".jupyter_kernelspec")
+
+
 
 # Function to handle script abortion
 abort() {
@@ -29,6 +31,28 @@ abort() {
     echo "$message"
   fi
   exit "$exit_code"
+}
+
+venv_active() {
+    local target_venv=""
+    local current_venv=-1
+
+    # check if a pyenv virtual env is active
+    if [[ -n $PYENV_VIRTUAL_ENV && -n $VIRTUAL_ENV ]] && [[ "$PYENV_VIRTUAL_ENV" == "$VIRTUAL_ENV" ]]; then
+        if [[ $(basename $PYENV_VIRTUAL_ENV) == $PYENV ]]; then
+            current_venv=$PYENV_VIRTUAL_ENV
+            target_venv=$PYENV_VIRTUAL_ENV
+        fi
+    elif [[ $VIRTUAL_ENV == $VENV ]]; then
+        current_venv=$VIRTUAL_ENV
+        target_venv=$VIRTUAL_ENV
+    fi
+
+    if [[ "$current_venv" == "$target_venv" ]]; then
+        return 0  # Virtual environment is active and matches target
+    fi
+
+    return 1  # No virtual environment is active or does not match target
 }
 
 function help {
@@ -85,7 +109,7 @@ function create_venv {
 }
 
 function create_pyenv {    
-    local venvName=$(basename "$VENV")
+    local venvName=$(basename "$PYENV")
     echo "Creating local pyenv virtual environment based on $pyenv_version named $venvName in $PROJECT_DIR"
     pushd $PROJECT_DIR
     if [ -f .python-version ];
@@ -128,8 +152,34 @@ function create_pyenv {
 
 
 function jupyter_config {
-  local venvName=$(basename "$VENV")
-  if jupyter kernelspec list | grep -q "$venvName"; then
+
+  echo "Configuring Jupyter..."
+  local venvName=""
+  if [[ -f .python-version ]]; then
+     venvName=$PYENV
+    if venv_active ; then
+      pip install ipykernel || abort "Failed to install ipykernel. Stopping." 1
+    else
+      echo "There appears to be a local pyenv version file, but no active virtual environment"
+      echo "Cannot proceed with setting up Jupyter kernel. Try recreating the virtual environment."
+      return
+    fi  
+  elif [[ -d $VENV ]]; then
+    source $VENV/bin/activate || abort "Failed to activate virtual environment in $VENV. Stopping" 1
+    venvName=$(basename "$VENV")
+    if venv_active ; then
+      pip install ipykernel || abort "Failed to install ipykernel. Stopping." 1
+    fi
+  fi
+
+  if [[ -z $venvName ]]; then
+    echo "Something went very wrong with determining the project virtual environment. Skipping jupyter configuration."
+    echo "You can configure it manually with the following command:"
+    echo "$ python -m ipykernel install --user --name <project_name_nere> --display-name \"Python (<project_name_here)\""
+    return
+  fi
+  
+  if jupyter kernelspec list | grep -q " $venvName "; then
     echo "Jupyter kernel '$venvName' already exists. Skipping installation."
   else
     python -m ipykernel install --user --name "$venvName" --display-name "Python ($venvName)" || abort "Failed to install Jupyter kernel." 1
@@ -139,7 +189,7 @@ function jupyter_config {
 }
 
 function purge_pyenv {
-    local venvName=$(basename "$VENV")
+    local venvName=$(basename "$PYENV")
     local python_version="$PROJECT_DIR/.python-version"
 
     # Confirm with the user before proceeding
@@ -205,17 +255,24 @@ function purge_venv {
 
 function purge_kernelspec {
   # Remove Jupyter kernel spec if it exists
-    local kernel_name=$(basename "$VENV")
-    echo "Cleaning up any jupyter kernelspecs for $kernel_name"
-    # local kernel_name=$(cat "$KERNEL_SPEC")
-    if jupyter kernelspec list | grep "$kernel_name"; then
-        echo "Removing Jupyter kernel spec '$kernel_name'..."
-        jupyter kernelspec remove "$kernel_name" -f || abort "Failed to remove Jupyter kernel spec." 1
-        echo "Jupyter kernel spec removed successfully."
-    else
-        echo "No kernelspecs found to clean up. Check manually with 'jupyter kernelspec list'"
+
+    if [[ -d $VENV ]]; then
+      local kernel_name=$(basename "$VENV")
+    elif [[ -f $PROJECT_DIR/.python-version ]]
+    then
+      local kernel_name=$PYENV
     fi
-  
+    
+    if [[ -n $kernel_name ]]; then
+      echo "Cleaning up any jupyter kernelspecs for $kernel_name"
+      if jupyter kernelspec list | grep " $kernel_name "; then
+          echo "Removing Jupyter kernel spec '$kernel_name'..."
+          jupyter kernelspec remove "$kernel_name" -f || abort "Failed to remove Jupyter kernel spec." 1
+          echo "Jupyter kernel spec removed successfully."
+      else
+          echo "No kernelspecs found to clean up. Check manually with 'jupyter kernelspec list'"
+      fi
+    fi
 
     # Remove configuration file if it exists
     if [[ -f "$KERNEL_SPEC" ]]; then
@@ -228,15 +285,15 @@ function purge {
     then
         echo "Cleaning up virtualenv $VENV"
         purge_venv
-    fi
-
-    if [[ -f './.python-version' ]]
+    elif [[ -f './.python-version' ]]
     then
         echo "Cleaning up pyenv local environment"
         purge_pyenv
+    else
+      echo "No venvs found to purge"
     fi
-
     purge_kernelspec
+    echo "Done"
 }
 
 function install_requirements {
