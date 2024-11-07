@@ -34,7 +34,7 @@ abort() {
 function help {
   cat << EOF
 
-  Setup the virtual environment for this project
+  Setup a virtual environment for this project
 
   Usage:
     $0 [option]
@@ -44,9 +44,9 @@ function help {
     -j                Create the virtual environment AND add Jupyter kernel for development
     --pyenv <version> Create the virtual environment using pyenv with specified Python version 
                       -c or -j is required
-    -h                Display this help screen
     -p                Purge the virtual environment and clean Jupyter kernelspecs
-    --info            Display virtual environment information
+    -k                Purge jupyter kernelspecs for this project
+    -h                Display this help screen
 
 EOF
   abort
