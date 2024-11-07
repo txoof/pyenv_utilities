@@ -161,7 +161,8 @@ function jupyter_config {
       pip install ipykernel || abort "Failed to install ipykernel. Stopping." 1
     else
       echo "There appears to be a local pyenv version file, but no active virtual environment"
-      echo "Cannot proceed with setting up Jupyter kernel. Try recreating the virtual environment."
+      echo "Cannot proceed with setting up Jupyter kernel."
+      echo "Try re-running the script with the same command. If you see this same message, there is a larger problem"
       return
     fi  
   elif [[ -d $VENV ]]; then
