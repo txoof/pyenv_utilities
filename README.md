@@ -52,6 +52,12 @@ $ ./pyenv_utilities/init_environment.sh -j --pyenv 3.9.17
 
 Further reading on [Git Submodules](https://medium.com/@osinpaul/deep-dive-into-git-submodules-managing-dependencies-in-your-projects-b4847c83f34d)
 
+## Update `pyenv_utilities`
+
+```bash
+$ git submodule update --remote --recursive --init
+```
+
 ## Requirements
 
 ### Basic requirements:
