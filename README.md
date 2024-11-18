@@ -64,7 +64,27 @@ Create a virtual environment using a specific python version using pyenv and ins
 $ ./pyenv_utilities/init_environment.sh -j --pyenv 3.9.17
 ```
 
-## Update `pyenv_utilities`
+#### Activate the Virtual environment
+
+When working in Jupyter, simply select the kernel from the drop down menu in the upper right corner of the notebook screen.
+
+![Jupyter Kernel Select](./assets/select_kernel.png)
+
+**PyEnv**: the virtual environment will be active automatically when you are in the directory.
+
+**Venv** activate the virtual environment before installing packages or working with executables. From within the project directory:
+
+```bash
+$ source ./venv_activate
+```
+
+To deactivate the venv:
+
+```bash
+$ deactivate
+```
+
+## Update `pyenv_utilities` as a Git submodule
 
 ```bash
 $ git submodule update --remote --recursive --init
