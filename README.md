@@ -23,7 +23,17 @@ This script makes it easy to manage per-project virtual environments and offers 
 
 ### Quick Start
 
-Add this repository as a submodule to your project:
+#### Use this repo within a project directory
+
+This is the simplest way to add the the scripts to your 
+
+```bash
+$ git clone  https://github.com/txoof/pyenv_utilities.git
+```
+
+#### Add this repository as a submodule 
+
+This will add the repo to your project to always keep it up to date with future releases.
 
 ```bash
 $ cd /your/project/path
@@ -31,6 +41,8 @@ $ git submodule add https://github.com/txoof/pyenv_utilities.git ./
 ```
 
 This will clone the project into `./pyenv_utilities` and allow you to begin using it immediately.
+
+#### Create a virtual environment
 
 Create a virtual environment using your system/global python installation from your project directory:
 
