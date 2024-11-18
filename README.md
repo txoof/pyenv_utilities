@@ -27,7 +27,7 @@ These options will clone pyenv_utilities into `./pyenv_utilities` and allow you 
 
 #### Use this repo within a project directory
 
-This is the simplest way to add the the scripts to your 
+This is the simplest way to add the the scripts to a project directory.
 
 ```bash
 $ git clone  https://github.com/txoof/pyenv_utilities.git
@@ -48,22 +48,21 @@ Further reading on [Git Submodules](https://medium.com/@osinpaul/deep-dive-into-
 
 Create a virtual environment using your system/global python installation from your project directory:
 
-```
+```bash
 $ ./pyenv_utilities/init_environment.sh -c
 ```
 
 Create a virtual environment and add a Jupyter kernelspec:
 
-```
+```bash
 $ ./pyenv_utilities/init_environment.sh -j 
 ```
 
 Create a virtual environment using a specific python version using pyenv and install a kernelspec:
 
-```
+```bash
 $ ./pyenv_utilities/init_environment.sh -j --pyenv 3.9.17
 ```
-
 
 ## Update `pyenv_utilities`
 
@@ -73,14 +72,14 @@ $ git submodule update --remote --recursive --init
 
 ## Requirements
 
-### Basic requirements:
+### Basic requirements
 
 - `python3` with
   - `virtualenv`
 
 ### Requirements for pyenv functionality
 
-Note, pyenv is only available for *nix/BSD environments. Both can be installed with homebrew on Mac OS. 
+Note, pyenv is only available for *nix/BSD environments. Both can be installed with homebrew on Mac OS.
 
 - `pyenv`
 - `pyenv-virtualenv`
