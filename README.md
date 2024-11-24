@@ -65,6 +65,7 @@ And then run: `$ ./pyenv_utilities -c` to create a virtual environment.
 Alternatively, [download the project as a zip](https://github.com/txoof/pyenv_utilities/archive/refs/heads/main.zip) and decompress it in your project directory.
 
 #### Recipes
+
 ______
 
 **Create a virtual environment using your system/global python installation from your project directory:**
@@ -122,9 +123,25 @@ Symlink '/Users/spamham/Documents/src/foobar_project/venv_activate' removed succ
 Done
 ```
 
-Further reading on [Git Submodules](https://medium.com/@osinpaul/deep-dive-into-git-submodules-managing-dependencies-in-your-projects-b4847c83f34d)
+#### Activate the Virtual environment
 
-## Update `pyenv_utilities`
+When working in Jupyter or VS Code, simply select the kernel from the drop down menu in the upper right corner of the notebook screen.
+
+**PyEnv**: the virtual environment will be active automatically when you are in the directory.
+
+**Venv** activate the virtual environment before installing packages or working with executables. From within the project directory:
+
+```bash
+$ source ./venv_activate
+```
+
+To deactivate the venv:
+
+```bash
+$ deactivate
+```
+
+## Update `pyenv_utilities` as a Git submodule
 
 ```bash
 $ git submodule update --remote --recursive --init
