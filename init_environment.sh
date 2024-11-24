@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+VERSION="0.2.0"
+
 # Derive script and project directories
 SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -33,30 +35,10 @@ abort() {
   exit "$exit_code"
 }
 
-venv_active() {
-    local target_venv=""
-    local current_venv=-1
-
-    # check if a pyenv virtual env is active
-    if [[ -n $PYENV_VIRTUAL_ENV && -n $VIRTUAL_ENV ]] && [[ "$PYENV_VIRTUAL_ENV" == "$VIRTUAL_ENV" ]]; then
-        if [[ $(basename $PYENV_VIRTUAL_ENV) == $PYENV ]]; then
-            current_venv=$PYENV_VIRTUAL_ENV
-            target_venv=$PYENV_VIRTUAL_ENV
-        fi
-    elif [[ $VIRTUAL_ENV == $VENV ]]; then
-        current_venv=$VIRTUAL_ENV
-        target_venv=$VIRTUAL_ENV
-    fi
-
-    if [[ "$current_venv" == "$target_venv" ]]; then
-        return 0  # Virtual environment is active and matches target
-    fi
-
-    return 1  # No virtual environment is active or does not match target
-}
-
 function help {
   cat << EOF
+
+  init_environment V$VERSION
 
   Setup a virtual environment for this project
 
@@ -68,31 +50,51 @@ function help {
     -j                Create the virtual environment AND add Jupyter kernel for development
     --pyenv <version> Create the virtual environment using pyenv with specified Python version 
                       -c or -j is required
-    -p                Purge the virtual environment and clean Jupyter kernelspecs
-    -k                Purge jupyter kernelspecs for this project
+    -g                Update .gitignore to ignore venv related files                    
+    -p                Purge the virtual environment and remove Jupyter kernelspecs
+    -k                Purge only the jupyter kernelspecs for this project
     -h                Display this help screen
+    -V                Display version information and exit
 
 EOF
   abort
 }
 
-#
+
 function git_ignore {
     local gitignore_file="$PROJECT_DIR/.gitignore"
+    local start_marker="# BEGIN PYENV_UTILITIES MANAGED BLOCK"
+    local end_marker="# END PYENV_UTILITIES MANAGED BLOCK"
 
-    if [ -f "$gitignore_file" ]; then
+    # Check if current directory is a git repository
+    if git rev-parse --is-inside-work-tree &>/dev/null; then
+        # Create .gitignore if missing
+        if [ ! -f "$gitignore_file" ]; then
+            echo ".gitignore does not exist in $PROJECT_DIR. Creating .gitignore..."
+            touch "$gitignore_file"
+        fi
+
+        # Remove the existing managed block if present
+        if grep -q "$start_marker" "$gitignore_file"; then
+            sed -i "/$start_marker/,/$end_marker/d" "$gitignore_file"
+        fi
+
+        # Add the managed block
         echo "Adding entries to .gitignore..."
-        echo "" >> "$gitignore_file"
-        # Add each item in FILES_TO_IGNORE to the .gitignore if they are not already present
-        for file in "${FILES_TO_IGNORE[@]}"; do
-            echo "Adding $file type to .gitignore"
-            grep -qF "$file" "$gitignore_file" || echo "$file" >> "$gitignore_file"
-        done
+        {
+            echo "$start_marker"
+            for file in "${FILES_TO_IGNORE[@]}"; do
+                echo "$file"
+            done
+            echo "$end_marker"
+        } >> "$gitignore_file"
+
         echo "Entries added to .gitignore."
     else
-        echo ".gitignore does not exist in $PROJECT_DIR. Skipping update."
+        echo "Current directory is not a git repository. Skipping .gitignore update."
     fi
 }
+
 
 # create a virtual environment using venv
 function create_venv {    
@@ -309,8 +311,7 @@ j_flag=0
 k_flag=0
 p_flag=0
 
-# Use getopts to parse flags and input values
-while getopts "chjkp-:" opt; do
+while getopts "chjkpVg-:" opt; do
   case $opt in
     c)
       if [[ $p_flag -eq 1 ]]; then
@@ -335,6 +336,13 @@ while getopts "chjkp-:" opt; do
         abort "The -c|-j and -p options are mutually exclusive." 1
       fi
       p_flag=1
+      ;;
+    V)
+      abort "$VERSION" 0
+      ;;
+    g)
+      git_ignore
+      abort
       ;;
     -)
       case "${OPTARG}" in
