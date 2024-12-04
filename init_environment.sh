@@ -159,7 +159,7 @@ function jupyter_config {
   local venvName=""
   if [[ -f .python-version ]]; then
      venvName=$PYENV
-    if venv_active ; then
+    if venv_activate ; then
       pip install ipykernel || abort "Failed to install ipykernel. Stopping." 1
     else
       echo "There appears to be a local pyenv version file, but no active virtual environment"
