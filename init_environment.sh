@@ -60,6 +60,26 @@ EOF
   abort
 }
 
+venv_active() {
+    local target_venv=""
+    local current_venv=-1
+    # check if a pyenv virtual env is active
+    if [[ -n $PYENV_VIRTUAL_ENV && -n $VIRTUAL_ENV ]] && [[ "$PYENV_VIRTUAL_ENV" == "$VIRTUAL_ENV" ]]; then
+        if [[ $(basename $PYENV_VIRTUAL_ENV) == $PYENV ]]; then
+            current_venv=$PYENV_VIRTUAL_ENV
+            target_venv=$PYENV_VIRTUAL_ENV
+        fi
+    elif [[ $VIRTUAL_ENV == $VENV ]]; then
+        current_venv=$VIRTUAL_ENV
+        target_venv=$VIRTUAL_ENV
+    fi
+    if [[ "$current_venv" == "$target_venv" ]]; then
+        return 0  # Virtual environment is active and matches target
+    fi
+    return 1  # No virtual environment is active or does not match target
+}
+
+
 
 function git_ignore {
     local gitignore_file="$PROJECT_DIR/.gitignore"
@@ -159,7 +179,7 @@ function jupyter_config {
   local venvName=""
   if [[ -f .python-version ]]; then
      venvName=$PYENV
-    if venv_activate ; then
+    if venv_active ; then
       pip install ipykernel || abort "Failed to install ipykernel. Stopping." 1
     else
       echo "There appears to be a local pyenv version file, but no active virtual environment"
