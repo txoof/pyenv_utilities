@@ -1,17 +1,14 @@
 #!/usr/bin/env bash
 
-VERSION="0.2.0"
+VERSION="0.3.0"
 
-# Derive script and project directories
-SCRIPT_DIR="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+# Use the current working directory as the project directory
+PROJECT_DIR="$(pwd)"
 
-
-# Extract project name from the parent directory
+# Extract project name from the current working directory
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
 
-
-# Virtual environment name with hash for uniqueness
+# Virtual environment name with a hash for uniqueness
 VENV_HASH=$(echo -n "$PROJECT_DIR" | md5sum | cut -c1-10)
 VENV="$PROJECT_DIR/${PROJECT_NAME}-venv-$VENV_HASH"
 PYENV="${PROJECT_NAME}-pyenv-$VENV_HASH"
@@ -19,11 +16,8 @@ PYENV="${PROJECT_NAME}-pyenv-$VENV_HASH"
 KERNEL_SPEC="$PROJECT_DIR/.jupyter_kernelspec"
 ACTIVATE_SL="$PROJECT_DIR/venv_activate"
 
-# List of files to ignore in .gitignore - quotated, spaces NO COMMAS
-
+# List of files to ignore in .gitignore - quoted, spaces NO COMMAS
 FILES_TO_IGNORE=("/$(basename "$VENV")" "venv_activate" ".jupyter_kernelspec")
-
-
 
 # Function to handle script abortion
 abort() {
@@ -59,24 +53,25 @@ function help {
 EOF
   abort
 }
-
 venv_active() {
-    local target_venv=""
-    local current_venv=-1
-    # check if a pyenv virtual env is active
-    if [[ -n $PYENV_VIRTUAL_ENV && -n $VIRTUAL_ENV ]] && [[ "$PYENV_VIRTUAL_ENV" == "$VIRTUAL_ENV" ]]; then
-        if [[ $(basename $PYENV_VIRTUAL_ENV) == $PYENV ]]; then
-            current_venv=$PYENV_VIRTUAL_ENV
-            target_venv=$PYENV_VIRTUAL_ENV
-        fi
-    elif [[ $VIRTUAL_ENV == $VENV ]]; then
-        current_venv=$VIRTUAL_ENV
-        target_venv=$VIRTUAL_ENV
+    # Check if any virtual environment is active.
+    if [[ -z "$VIRTUAL_ENV" ]]; then
+        return 1
     fi
-    if [[ "$current_venv" == "$target_venv" ]]; then
-        return 0  # Virtual environment is active and matches target
+
+    # For a regular virtual environment, the expected directory is $VENV.
+    if [[ "$VIRTUAL_ENV" == "$VENV" ]]; then
+        return 0
     fi
-    return 1  # No virtual environment is active or does not match target
+
+    # For a pyenv virtual environment, compare basenames.
+    local active_name
+    active_name=$(basename "$VIRTUAL_ENV")
+    if [[ "$active_name" == "$PYENV" ]]; then
+        return 0
+    fi
+
+    return 1
 }
 
 
@@ -131,33 +126,45 @@ function create_venv {
 }
 
 function create_pyenv {    
-    local venvName=$(basename "$PYENV")
+    local venvName
+    venvName=$(basename "$PYENV")
     echo "Creating local pyenv virtual environment based on $pyenv_version named $venvName in $PROJECT_DIR"
-    pushd $PROJECT_DIR
-    if [ -f .python-version ];
-    then
+    pushd "$PROJECT_DIR" || abort "Failed to enter project directory" 1
+
+    if [ -f .python-version ]; then
         echo "Local pyenv virtual environment in $PROJECT_DIR exists, skipping this step"
     else
-
-        if ! command -v pyenv &> /dev/null 
-        then
+        # Check if pyenv is installed
+        if ! command -v pyenv &> /dev/null; then
             popd
-            abort "pyenv does not appear to be installed or in the path. Stopping." 1
+            abort "pyenv does not appear to be installed or in the path. Please install pyenv and the pyenv-virtualenv plugin." 1
         fi
-    
-        # Check to see if $pyenv_version is available locally, if not offer to install it
+
+        # Check if the pyenv-virtualenv plugin is available
+        if ! pyenv help | grep -q "virtualenv"; then
+            popd
+            abort "pyenv-virtualenv plugin is not installed or initialized.
+Please install it and try running the command again. 
+If it fails, add the following to your shell configuration:
+  eval \"\$(pyenv init --path)\"
+  eval \"\$(pyenv init -)\"
+  eval \"\$(pyenv virtualenv-init -)\"
+Then restart your shell and try again." 1
+        fi
+
+        # Check if the specified Python version is available locally; if not, prompt for installation.
         if ! pyenv versions --skip-aliases | grep -q "$pyenv_version"; then
             echo "$pyenv_version is not available locally. Would you like to install it? (y/n)"
             read -r response
             if [[ "$response" == "y" ]]; then
                 pyenv install "$pyenv_version"
             else
-                abort "Pyenv version $pyenv_version is requed to continue. Exiting." 1
                 popd
+                abort "Pyenv version $pyenv_version is required to continue. Exiting." 1
             fi
-        fi # check for pyenv version
+        fi
 
-        # Create a pyenv virtualenv only if it does not exist
+        # Create a pyenv virtualenv only if it does not exist.
         if ! pyenv versions --skip-aliases | grep -q "$venvName"; then
             pyenv virtualenv "$pyenv_version" "$venvName"
             exit_status=$?
@@ -167,8 +174,9 @@ function create_pyenv {
         else
             echo "Pyenv virtual environment $venvName already exists, skipping creation."
         fi
-        pyenv local $venvName || abort "Failed to set local venv" 1
-    fi # check for .python_version
+
+        pyenv local "$venvName" || abort "Failed to set local venv" 1
+    fi
     popd
 }
 
@@ -322,6 +330,9 @@ function purge {
 function install_requirements {
   echo "Activate your virtual environment and install requirements with 'pip install -r requirements.txt'"
 }
+
+# venv_active
+# exit
 
 # Initialize variables for flags and values
 pyenv=""
